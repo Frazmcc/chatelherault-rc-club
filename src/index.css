@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:wght@400;600;700&display=swap');
+
+:root {
+  font-family: 'Source Serif 4', Georgia, serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #183328;
+  background:
+    radial-gradient(circle at top left, rgb(255 255 255 / 0.85), transparent 28%),
+    linear-gradient(180deg, #efe6d5 0%, #f7f1e8 42%, #ede4d4 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --ink-strong: #163024;
+  --ink: #294739;
+  --ink-muted: #5b6d62;
+  --surface: #fffaf3;
+  --line: rgb(34 63 49 / 0.12);
+  --line-strong: rgb(34 63 49 / 0.24);
+  --accent: #cd7138;
+  --accent-deep: #8a451d;
+  --shadow-soft: 0 22px 44px rgb(66 43 23 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body,
+p,
+li {
+  font-size: 1rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand,
+.button,
+.site-nav a {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+#root {
+  width: min(1180px, calc(100vw - 2rem));
+  margin: 0 auto;
+}
