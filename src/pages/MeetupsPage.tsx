@@ -32,6 +32,32 @@ const METOFFICE_HOURLY_URL =
   import.meta.env.VITE_METOFFICE_HOURLY_URL ||
   'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly'
 
+const LONDON_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+
+function getLondonPartsFromDate(date: Date): { year: number; month: number; day: number; hour: number } {
+  const parts = LONDON_PARTS_FORMATTER.formatToParts(date)
+  const map = new Map<string, string>()
+
+  parts.forEach((part) => {
+    map.set(part.type, part.value)
+  })
+
+  return {
+    year: Number.parseInt(map.get('year') || '0', 10),
+    month: Number.parseInt(map.get('month') || '0', 10),
+    day: Number.parseInt(map.get('day') || '0', 10),
+    hour: Number.parseInt(map.get('hour') || '0', 10),
+  }
+}
+
 function getNextSundayDate(fromDate: Date): Date {
   const date = new Date(fromDate)
   const day = date.getDay()
@@ -48,14 +74,14 @@ function inNextSundayWindow(isoTime: string, nextSunday: Date): boolean {
     return false
   }
 
-  const local = new Date(parsed.toLocaleString('en-GB', { timeZone: 'Europe/London' }))
+  const london = getLondonPartsFromDate(parsed)
 
   return (
-    local.getFullYear() === nextSunday.getFullYear() &&
-    local.getMonth() === nextSunday.getMonth() &&
-    local.getDate() === nextSunday.getDate() &&
-    local.getHours() >= 9 &&
-    local.getHours() <= 13
+    london.year === nextSunday.getFullYear() &&
+    london.month === nextSunday.getMonth() + 1 &&
+    london.day === nextSunday.getDate() &&
+    london.hour >= 9 &&
+    london.hour <= 13
   )
 }
 
@@ -66,13 +92,7 @@ function getLondonDateParts(isoTime: string): { year: number; month: number; day
     return null
   }
 
-  const local = new Date(parsed.toLocaleString('en-GB', { timeZone: 'Europe/London' }))
-  return {
-    year: local.getFullYear(),
-    month: local.getMonth() + 1,
-    day: local.getDate(),
-    hour: local.getHours(),
-  }
+  return getLondonPartsFromDate(parsed)
 }
 
 function buildWeatherPoint(point: MetOfficeSeriesPoint): WeatherPoint {
