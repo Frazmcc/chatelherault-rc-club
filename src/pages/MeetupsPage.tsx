@@ -141,6 +141,13 @@ function MeetupsPage() {
         }
 
         if (!response.ok) {
+          const contentType = response.headers.get('content-type') || ''
+          if (response.status === 404 && contentType.includes('text/html')) {
+            throw new Error(
+              'Weather proxy route not found at /api/metoffice-forecast. Use your Workers deployment URL or ensure the Worker API route is deployed.',
+            )
+          }
+
           throw new Error(`Met Office request failed (${response.status}).`)
         }
 
@@ -177,9 +184,7 @@ function MeetupsPage() {
         }
 
         const message = error instanceof Error ? error.message : 'Unable to load weather forecast right now.'
-        setWeatherError(
-          `${message} Configure Cloudflare Pages env var METOFFICE_API_KEY for /api/metoffice-forecast.`,
-        )
+        setWeatherError(`${message} Ensure Worker secret METOFFICE_API_KEY is set.`)
       } finally {
         if (active) {
           setIsLoadingWeather(false)
