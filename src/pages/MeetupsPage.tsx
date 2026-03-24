@@ -209,9 +209,7 @@ function MeetupsPage() {
           <ul className="bullet-list">
             <li>Arrival Window: {meetups.arrivalWindow}</li>
             <li>Rollout Target: {meetups.rolloutTarget}</li>
-            <li>
-              {meetups.meetPointLabel}: {meetups.meetPointCoordinates}
-            </li>
+            <li>Meet Point: {meetups.meetPointLabel}</li>
             <li>
               what3words: <a href={meetups.what3wordsUrl}>{meetups.what3words}</a>
             </li>
@@ -246,7 +244,6 @@ function MeetupsPage() {
           />
         </div>
         <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.7 }}>
-          Coordinates: {MEETUP_LAT}, {MEETUP_LON} ·{' '}
           <a
             href={`https://www.google.com/maps?q=${MEETUP_LAT},${MEETUP_LON}&t=k`}
             target="_blank"
