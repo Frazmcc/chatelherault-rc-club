@@ -112,6 +112,10 @@ function MeetupsPage() {
 
   useEffect(() => {
     const browserApiKey = import.meta.env.VITE_METOFFICE_API_KEY
+    const isLocalDev =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '::1'
 
     let active = true
 
@@ -127,9 +131,10 @@ function MeetupsPage() {
             accept: 'application/json',
           },
         })
+        let responseSource: 'proxy' | 'direct' = 'proxy'
 
         // Local development fallback: direct browser call if proxy endpoint is unavailable.
-        if (!response.ok && browserApiKey) {
+        if (!response.ok && browserApiKey && isLocalDev) {
           const directUrl = `${METOFFICE_HOURLY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}`
           response = await fetch(directUrl, {
             headers: {
@@ -138,17 +143,32 @@ function MeetupsPage() {
               accept: 'application/json',
             },
           })
+          responseSource = 'direct'
         }
 
         if (!response.ok) {
           const contentType = response.headers.get('content-type') || ''
+
+          let details = ''
+          try {
+            if (contentType.includes('application/json')) {
+              const body = (await response.json()) as { error?: string; details?: string }
+              details = body?.error || body?.details || ''
+            } else {
+              details = (await response.text()).slice(0, 240)
+            }
+          } catch {
+            details = ''
+          }
+
           if (response.status === 404 && contentType.includes('text/html')) {
             throw new Error(
               'Weather proxy route not found at /api/metoffice-forecast. Use your Workers deployment URL or ensure the Worker API route is deployed.',
             )
           }
 
-          throw new Error(`Met Office request failed (${response.status}).`)
+          const detailsSuffix = details ? ` ${details}` : ''
+          throw new Error(`Met Office ${responseSource} request failed (${response.status}).${detailsSuffix}`)
         }
 
         const payload = (await response.json()) as unknown
@@ -184,7 +204,7 @@ function MeetupsPage() {
         }
 
         const message = error instanceof Error ? error.message : 'Unable to load weather forecast right now.'
-        setWeatherError(`${message} Ensure Worker secret METOFFICE_API_KEY is set.`)
+        setWeatherError(message)
       } finally {
         if (active) {
           setIsLoadingWeather(false)
