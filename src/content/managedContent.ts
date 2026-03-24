@@ -137,7 +137,7 @@ export const defaultAboutContent: AboutContent = {
 export const defaultMeetupsContent: MeetupsContent = {
   eyebrow: 'Sunday meetup hub',
   title: 'Meet every Sunday morning at Chatelherault',
-  description: 'This page is designed for quick clarity: where to meet, when to arrive, and what to bring.',
+  description: ' ',
   scheduleTitle: 'Sunday meetup schedule',
   arrivalWindow: '9:00am',
   rolloutTarget: '10:00am',
