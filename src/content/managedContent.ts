@@ -148,10 +148,11 @@ export const defaultMeetupsContent: MeetupsContent = {
   weatherLocationLabel: 'Chatelherault (Ferniegair)',
   checklistTitle: 'Sunday prep checklist',
   checklistItems: [
-    'Fully charged packs and backup battery',
-    'Basic tools and wheel nut wrench',
+    'Suitable footware, not trainers. (Waterproof trail shoes are popular)',
+    'Fully charged batteries (car and controller)',
+    'Basic tools and wheel nut wrench (not required)',
     'Waterproof gear for changing conditions',
-    'Trail-ready 1/10 crawler setup',
+    'Snacks and drink (not required but recommended)',
   ],
 }
 
