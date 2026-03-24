@@ -1,5 +1,7 @@
 const DEFAULT_METOFFICE_HOURLY_URL =
   'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly'
+const DEFAULT_METOFFICE_THREE_HOURLY_URL =
+  'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/three-hourly'
 const DEFAULT_MONTHLY_BUDGET_BYTES = 900 * 1024 * 1024
 const DEFAULT_SAFETY_BUFFER_BYTES = 10 * 1024 * 1024
 const DEFAULT_CACHE_TTL_SECONDS = 3 * 60 * 60
@@ -84,6 +86,7 @@ async function handleForecast(request, env, ctx) {
   const url = new URL(request.url)
   const latitude = parseCoordinate(url.searchParams.get('latitude'), 55.76278)
   const longitude = parseCoordinate(url.searchParams.get('longitude'), -4.010164)
+  const frequency = url.searchParams.get('frequency') === 'three-hourly' ? 'three-hourly' : 'hourly'
   const monthlyBudget = parseInteger(env.METOFFICE_MONTHLY_BUDGET_BYTES, DEFAULT_MONTHLY_BUDGET_BYTES)
   const safetyBuffer = parseInteger(env.METOFFICE_BUDGET_SAFETY_BYTES, DEFAULT_SAFETY_BUFFER_BYTES)
   const cacheTtlSeconds = parseInteger(env.METOFFICE_CACHE_TTL_SECONDS, DEFAULT_CACHE_TTL_SECONDS)
@@ -94,6 +97,7 @@ async function handleForecast(request, env, ctx) {
   cacheKeyUrl.pathname = '/api/metoffice-forecast-cache'
   cacheKeyUrl.searchParams.set('latitude', String(latitude))
   cacheKeyUrl.searchParams.set('longitude', String(longitude))
+  cacheKeyUrl.searchParams.set('frequency', frequency)
   const cacheKey = new Request(cacheKeyUrl.toString(), { method: 'GET' })
   const cache = caches.default
 
@@ -146,7 +150,10 @@ async function handleForecast(request, env, ctx) {
 
   await setCurrentCalls(usageKv, dayKey, currentCalls + 1)
 
-  const upstreamBase = env.METOFFICE_HOURLY_URL || DEFAULT_METOFFICE_HOURLY_URL
+  const upstreamBase =
+    frequency === 'three-hourly'
+      ? env.METOFFICE_THREE_HOURLY_URL || DEFAULT_METOFFICE_THREE_HOURLY_URL
+      : env.METOFFICE_HOURLY_URL || DEFAULT_METOFFICE_HOURLY_URL
   const upstreamUrl = `${upstreamBase}?latitude=${latitude}&longitude=${longitude}`
 
   const upstreamResponse = await fetch(upstreamUrl, {

@@ -225,16 +225,6 @@ function inNextSundayWindow(isoTime: string, nextSunday: Date): boolean {
   )
 }
 
-function getLondonDateParts(isoTime: string): { year: number; month: number; day: number; hour: number } | null {
-  const parsed = new Date(isoTime)
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null
-  }
-
-  return getLondonPartsFromDate(parsed)
-}
-
 function buildWeatherPoint(point: MetOfficeSeriesPoint): WeatherPoint {
   const weatherCode = getWeatherCode(point)
   const weatherInfo = getWeatherInfo(weatherCode)
@@ -307,6 +297,7 @@ function MeetupsPage() {
   const [weatherPoints, setWeatherPoints] = useState<WeatherPoint[]>([])
   const [weatherError, setWeatherError] = useState<string | null>(null)
   const [weatherNote, setWeatherNote] = useState<string | null>(null)
+  const [weatherGranularity, setWeatherGranularity] = useState<'hourly' | 'three-hourly'>('hourly')
   const [isLoadingWeather, setIsLoadingWeather] = useState(false)
   const nextSunday = useMemo(() => getNextSundayDate(new Date()), [])
 
@@ -323,6 +314,7 @@ function MeetupsPage() {
       setIsLoadingWeather(true)
       setWeatherError(null)
       setWeatherNote(null)
+      setWeatherGranularity('hourly')
 
       try {
         const proxiedUrl = `${METOFFICE_PROXY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}`
@@ -401,56 +393,56 @@ function MeetupsPage() {
         }
 
         if (filtered.length > 0) {
+          setWeatherGranularity('hourly')
           setWeatherPoints(filtered)
           return
         }
 
-        const firstAvailableDateKey =
-          series
-            .filter((point) => Boolean(point.time))
-            .map((point) => getLondonDateParts(point.time as string))
-            .find((parts) => Boolean(parts) && (parts as { hour: number }).hour >= 9 && (parts as { hour: number }).hour <= 13)
+        // Sunday-specific fallback: three-hourly feed usually has a longer horizon than hourly.
+        const threeHourlyUrl = `${METOFFICE_PROXY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}&frequency=three-hourly`
+        let threeHourlyResponse = await fetch(threeHourlyUrl, {
+          headers: {
+            accept: 'application/json',
+          },
+        })
 
-        if (!firstAvailableDateKey) {
-          setWeatherError('No Met Office hourly points are currently available for 09:00-13:00.')
+        if (
+          !threeHourlyResponse.ok &&
+          threeHourlyResponse.status === 404 &&
+          METOFFICE_PROXY_URL === DEFAULT_PROXY_URL &&
+          window.location.hostname !== 'chatelherault-rc-club.fraz-er.workers.dev'
+        ) {
+          threeHourlyResponse = await fetch(
+            `${WORKER_FALLBACK_PROXY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}&frequency=three-hourly`,
+            {
+              headers: {
+                accept: 'application/json',
+              },
+            },
+          )
+        }
+
+        if (!threeHourlyResponse.ok) {
+          setWeatherError('Sunday forecast is not available in hourly data yet, and three-hourly fallback is unavailable.')
           setWeatherPoints([])
           return
         }
 
-        const fallbackFiltered = series
-          .filter((point) => {
-            if (!point.time) {
-              return false
-            }
-
-            const parts = getLondonDateParts(point.time)
-            if (!parts) {
-              return false
-            }
-
-            return (
-              parts.year === firstAvailableDateKey.year &&
-              parts.month === firstAvailableDateKey.month &&
-              parts.day === firstAvailableDateKey.day &&
-              parts.hour >= 9 &&
-              parts.hour <= 13
-            )
-          })
+        const threeHourlyPayload = (await threeHourlyResponse.json()) as unknown
+        const threeHourlySeries = extractSeries(threeHourlyPayload)
+        const sundayThreeHourly = threeHourlySeries
+          .filter((point) => Boolean(point.time) && inNextSundayWindow(point.time as string, nextSunday))
           .map((point) => buildWeatherPoint(point))
 
-        if (fallbackFiltered.length === 0) {
-          setWeatherError('No Met Office hourly points are currently available for 09:00-13:00.')
-          setWeatherPoints([])
+        if (sundayThreeHourly.length > 0) {
+          setWeatherGranularity('three-hourly')
+          setWeatherNote('Showing three-hourly Sunday forecast because hourly Sunday data is not published yet.')
+          setWeatherPoints(sundayThreeHourly)
           return
         }
 
-        const fallbackDate = new Date(
-          `${String(firstAvailableDateKey.year)}-${String(firstAvailableDateKey.month).padStart(2, '0')}-${String(firstAvailableDateKey.day).padStart(2, '0')}T12:00:00`,
-        )
-        setWeatherNote(
-          `Next Sunday forecast is not published yet. Showing nearest available window for ${formatForecastDate(fallbackDate)}.`,
-        )
-        setWeatherPoints(fallbackFiltered)
+        setWeatherPoints([])
+        setWeatherError(`Met Office has not published ${formatForecastDate(nextSunday)} 09:00-13:00 for this site yet.`)
       } catch (error) {
         if (!active) {
           return
@@ -537,7 +529,10 @@ function MeetupsPage() {
         <h2>
           Met Office forecast for {meetups.weatherLocationLabel} on {formatForecastDate(nextSunday)}
         </h2>
-        <p>Hourly window: 09:00 to 13:00 (Europe/London)</p>
+        <p>
+          {weatherGranularity === 'three-hourly' ? 'Three-hourly' : 'Hourly'} window: 09:00 to 13:00
+          (Europe/London)
+        </p>
         {!isLoadingWeather && weatherNote && <p>{weatherNote}</p>}
 
         {isLoadingWeather && <p>Loading latest forecast...</p>}
