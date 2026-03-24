@@ -1,8 +1,60 @@
+import { type MouseEvent, useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { defaultSiteSettings, type SiteSettings, useManagedJson } from '../content/managedContent'
 
 function SiteLayout() {
   const siteSettings = useManagedJson<SiteSettings>('/content/settings/site.json', defaultSiteSettings)
+  const [isRootAuthenticated, setIsRootAuthenticated] = useState(false)
+  const [rootEditMode, setRootEditMode] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    const loadAuthStatus = async () => {
+      try {
+        const response = await fetch('/api/root/status', {
+          headers: {
+            accept: 'application/json',
+          },
+        })
+        if (!response.ok) {
+          return
+        }
+        const body = (await response.json()) as { authenticated?: boolean }
+        if (active) {
+          const authenticated = Boolean(body.authenticated)
+          setIsRootAuthenticated(authenticated)
+          setRootEditMode(authenticated)
+        }
+      } catch {
+        // Ignore auth status failures on public page loads.
+      }
+    }
+
+    loadAuthStatus()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleMainClickCapture = (event: MouseEvent<HTMLElement>) => {
+    if (!isRootAuthenticated || !rootEditMode) {
+      return
+    }
+
+    const target = event.target as HTMLElement
+    if (target.closest('a, button, input, textarea, select, [contenteditable="true"]')) {
+      return
+    }
+
+    const editableContainer = target.closest('.section-heading, .info-card, .hero-panel, .highlight-list, .card-grid article')
+    if (!editableContainer) {
+      return
+    }
+
+    event.preventDefault()
+    window.location.assign('/admin/')
+  }
 
   return (
     <div className="site-shell">
@@ -28,7 +80,13 @@ function SiteLayout() {
         </nav>
       </header>
 
-      <main>
+      {isRootAuthenticated && rootEditMode ? (
+        <p className="root-edit-banner">
+          Root edit mode is active. Click any content box to jump into admin editing.
+        </p>
+      ) : null}
+
+      <main onClickCapture={handleMainClickCapture} className={rootEditMode ? 'root-edit-active' : ''}>
         <Outlet />
       </main>
 
