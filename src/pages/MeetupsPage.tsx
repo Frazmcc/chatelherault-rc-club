@@ -41,6 +41,12 @@ type WeatherCodeInfo = {
   icon: WeatherIconName
 }
 
+type LondonDateKey = {
+  year: number
+  month: number
+  day: number
+}
+
 const MEETUP_LAT = 55.76278
 const MEETUP_LON = -4.010164
 const DEFAULT_PROXY_URL = '/api/metoffice-forecast'
@@ -53,6 +59,7 @@ const METOFFICE_HOURLY_URL =
 
 const LONDON_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Europe/London',
+  weekday: 'short',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
@@ -182,7 +189,13 @@ function WeatherIcon({ icon }: { icon: WeatherIconName }) {
   )
 }
 
-function getLondonPartsFromDate(date: Date): { year: number; month: number; day: number; hour: number } {
+function getLondonPartsFromDate(date: Date): {
+  weekday: string
+  year: number
+  month: number
+  day: number
+  hour: number
+} {
   const parts = LONDON_PARTS_FORMATTER.formatToParts(date)
   const map = new Map<string, string>()
 
@@ -191,6 +204,7 @@ function getLondonPartsFromDate(date: Date): { year: number; month: number; day:
   })
 
   return {
+    weekday: map.get('weekday') || '',
     year: Number.parseInt(map.get('year') || '0', 10),
     month: Number.parseInt(map.get('month') || '0', 10),
     day: Number.parseInt(map.get('day') || '0', 10),
@@ -198,16 +212,31 @@ function getLondonPartsFromDate(date: Date): { year: number; month: number; day:
   }
 }
 
-function getNextSundayDate(fromDate: Date): Date {
-  const date = new Date(fromDate)
-  const day = date.getDay()
-  const daysUntilSunday = (7 - day) % 7
-  date.setDate(date.getDate() + daysUntilSunday)
-  date.setHours(0, 0, 0, 0)
-  return date
+function getTargetSundayKey(fromDate: Date): LondonDateKey {
+  const london = getLondonPartsFromDate(fromDate)
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  }
+  const londonWeekday = weekdayMap[london.weekday] ?? 0
+  const daysUntilSunday = (7 - londonWeekday) % 7
+
+  const baseUtc = Date.UTC(london.year, london.month - 1, london.day)
+  const targetUtc = new Date(baseUtc + daysUntilSunday * 24 * 60 * 60 * 1000)
+
+  return {
+    year: targetUtc.getUTCFullYear(),
+    month: targetUtc.getUTCMonth() + 1,
+    day: targetUtc.getUTCDate(),
+  }
 }
 
-function inNextSundayWindow(isoTime: string, nextSunday: Date): boolean {
+function inTargetSundayWindow(isoTime: string, targetSunday: LondonDateKey): boolean {
   const parsed = new Date(isoTime)
 
   if (Number.isNaN(parsed.getTime())) {
@@ -217,9 +246,9 @@ function inNextSundayWindow(isoTime: string, nextSunday: Date): boolean {
   const london = getLondonPartsFromDate(parsed)
 
   return (
-    london.year === nextSunday.getFullYear() &&
-    london.month === nextSunday.getMonth() + 1 &&
-    london.day === nextSunday.getDate() &&
+    london.year === targetSunday.year &&
+    london.month === targetSunday.month &&
+    london.day === targetSunday.day &&
     london.hour >= 9 &&
     london.hour <= 13
   )
@@ -261,11 +290,17 @@ function formatForecastTime(isoTime: string): string {
 
 function formatForecastDate(date: Date): string {
   return date.toLocaleDateString('en-GB', {
+    timeZone: 'Europe/London',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   })
+}
+
+function formatLondonDateFromKey(dateKey: LondonDateKey): string {
+  const utcDate = new Date(Date.UTC(dateKey.year, dateKey.month - 1, dateKey.day, 12, 0, 0))
+  return formatForecastDate(utcDate)
 }
 
 function extractSeries(payload: unknown): MetOfficeSeriesPoint[] {
@@ -299,7 +334,7 @@ function MeetupsPage() {
   const [weatherNote, setWeatherNote] = useState<string | null>(null)
   const [weatherGranularity, setWeatherGranularity] = useState<'hourly' | 'three-hourly'>('hourly')
   const [isLoadingWeather, setIsLoadingWeather] = useState(false)
-  const nextSunday = useMemo(() => getNextSundayDate(new Date()), [])
+  const targetSunday = useMemo(() => getTargetSundayKey(new Date()), [])
 
   useEffect(() => {
     const browserApiKey = import.meta.env.VITE_METOFFICE_API_KEY
@@ -385,7 +420,7 @@ function MeetupsPage() {
         const series = extractSeries(payload)
 
         const filtered = series
-          .filter((point) => Boolean(point.time) && inNextSundayWindow(point.time as string, nextSunday))
+          .filter((point) => Boolean(point.time) && inTargetSundayWindow(point.time as string, targetSunday))
           .map((point) => buildWeatherPoint(point))
 
         if (!active) {
@@ -431,7 +466,7 @@ function MeetupsPage() {
         const threeHourlyPayload = (await threeHourlyResponse.json()) as unknown
         const threeHourlySeries = extractSeries(threeHourlyPayload)
         const sundayThreeHourly = threeHourlySeries
-          .filter((point) => Boolean(point.time) && inNextSundayWindow(point.time as string, nextSunday))
+          .filter((point) => Boolean(point.time) && inTargetSundayWindow(point.time as string, targetSunday))
           .map((point) => buildWeatherPoint(point))
 
         if (sundayThreeHourly.length > 0) {
@@ -442,7 +477,9 @@ function MeetupsPage() {
         }
 
         setWeatherPoints([])
-        setWeatherError(`Met Office has not published ${formatForecastDate(nextSunday)} 09:00-13:00 for this site yet.`)
+        setWeatherError(
+          `Met Office has not published ${formatLondonDateFromKey(targetSunday)} 09:00-13:00 for this site yet.`,
+        )
       } catch (error) {
         if (!active) {
           return
@@ -462,7 +499,7 @@ function MeetupsPage() {
     return () => {
       active = false
     }
-  }, [nextSunday])
+  }, [targetSunday])
 
   return (
     <section className="page-block">
@@ -527,7 +564,7 @@ function MeetupsPage() {
       <article className="info-card">
         <p className="panel-label">Weather update</p>
         <h2>
-          Met Office forecast for {meetups.weatherLocationLabel} on {formatForecastDate(nextSunday)}
+          Met Office forecast for {meetups.weatherLocationLabel} on {formatLondonDateFromKey(targetSunday)}
         </h2>
         <p>
           {weatherGranularity === 'three-hourly' ? 'Three-hourly' : 'Hourly'} window: 09:00 to 13:00
