@@ -36,8 +36,7 @@ function getNextSundayDate(fromDate: Date): Date {
   const date = new Date(fromDate)
   const day = date.getDay()
   const daysUntilSunday = (7 - day) % 7
-  const offset = daysUntilSunday === 0 ? 7 : daysUntilSunday
-  date.setDate(date.getDate() + offset)
+  date.setDate(date.getDate() + daysUntilSunday)
   date.setHours(0, 0, 0, 0)
   return date
 }
