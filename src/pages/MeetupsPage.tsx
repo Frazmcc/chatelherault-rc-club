@@ -7,7 +7,8 @@ type WeatherPoint = {
   temperatureC: number | null
   precipitationChance: number | null
   windMph: number | null
-  weatherType: string | null
+  weatherCode: number | null
+  weatherLabel: string
 }
 
 type MetOfficeSeriesPoint = {
@@ -19,7 +20,25 @@ type MetOfficeSeriesPoint = {
   probabilityOfPrecipitation?: number
   probOfPrecipitation?: number
   windSpeed10m?: number
-  weatherType?: string
+  weatherType?: string | number
+  significantWeatherCode?: number
+}
+
+type WeatherIconName =
+  | 'sun'
+  | 'partly-cloudy'
+  | 'cloud'
+  | 'rain'
+  | 'drizzle'
+  | 'snow'
+  | 'sleet'
+  | 'hail'
+  | 'fog'
+  | 'thunder'
+
+type WeatherCodeInfo = {
+  label: string
+  icon: WeatherIconName
 }
 
 const MEETUP_LAT = 55.76278
@@ -41,6 +60,127 @@ const LONDON_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   minute: '2-digit',
   hour12: false,
 })
+
+const WEATHER_CODE_MAP: Record<number, WeatherCodeInfo> = {
+  0: { label: 'Clear night', icon: 'sun' },
+  1: { label: 'Sunny', icon: 'sun' },
+  2: { label: 'Partly cloudy', icon: 'partly-cloudy' },
+  3: { label: 'Partly cloudy', icon: 'partly-cloudy' },
+  5: { label: 'Mist', icon: 'fog' },
+  6: { label: 'Fog', icon: 'fog' },
+  7: { label: 'Cloudy', icon: 'cloud' },
+  8: { label: 'Overcast', icon: 'cloud' },
+  9: { label: 'Light rain shower', icon: 'rain' },
+  10: { label: 'Light rain shower', icon: 'rain' },
+  11: { label: 'Drizzle', icon: 'drizzle' },
+  12: { label: 'Light rain', icon: 'rain' },
+  13: { label: 'Heavy rain shower', icon: 'rain' },
+  14: { label: 'Heavy rain shower', icon: 'rain' },
+  15: { label: 'Heavy rain', icon: 'rain' },
+  16: { label: 'Sleet shower', icon: 'sleet' },
+  17: { label: 'Sleet shower', icon: 'sleet' },
+  18: { label: 'Sleet', icon: 'sleet' },
+  19: { label: 'Hail shower', icon: 'hail' },
+  20: { label: 'Hail shower', icon: 'hail' },
+  21: { label: 'Hail', icon: 'hail' },
+  22: { label: 'Light snow shower', icon: 'snow' },
+  23: { label: 'Light snow shower', icon: 'snow' },
+  24: { label: 'Light snow', icon: 'snow' },
+  25: { label: 'Heavy snow shower', icon: 'snow' },
+  26: { label: 'Heavy snow shower', icon: 'snow' },
+  27: { label: 'Heavy snow', icon: 'snow' },
+  28: { label: 'Thunder shower', icon: 'thunder' },
+  29: { label: 'Thunder shower', icon: 'thunder' },
+  30: { label: 'Thunder', icon: 'thunder' },
+}
+
+function getWeatherCode(point: MetOfficeSeriesPoint): number | null {
+  if (Number.isFinite(point.significantWeatherCode)) {
+    return point.significantWeatherCode as number
+  }
+
+  if (typeof point.weatherType === 'number' && Number.isFinite(point.weatherType)) {
+    return point.weatherType
+  }
+
+  if (typeof point.weatherType === 'string') {
+    const parsed = Number.parseInt(point.weatherType, 10)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function getWeatherInfo(code: number | null): WeatherCodeInfo {
+  if (code !== null && WEATHER_CODE_MAP[code]) {
+    return WEATHER_CODE_MAP[code]
+  }
+
+  return { label: 'Unknown', icon: 'cloud' }
+}
+
+function WeatherIcon({ icon }: { icon: WeatherIconName }) {
+  if (icon === 'sun') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.2 2.2M16.9 16.9l2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2" />
+      </svg>
+    )
+  }
+
+  if (icon === 'partly-cloudy') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <circle cx="8" cy="8" r="3" />
+        <path d="M7 16h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3-1.7A3.5 3.5 0 0 0 7 16z" />
+      </svg>
+    )
+  }
+
+  if (icon === 'rain' || icon === 'drizzle') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <path d="M7 14h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3-1.7A3.5 3.5 0 0 0 7 14z" />
+        <path d="M9 16l-1 3M13 16l-1 3M17 16l-1 3" />
+      </svg>
+    )
+  }
+
+  if (icon === 'snow' || icon === 'sleet' || icon === 'hail') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <path d="M7 14h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3-1.7A3.5 3.5 0 0 0 7 14z" />
+        <path d="M9 17h0.01M12 19h0.01M15 17h0.01" />
+      </svg>
+    )
+  }
+
+  if (icon === 'fog') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <path d="M5 10h14M4 14h16M6 18h12" />
+      </svg>
+    )
+  }
+
+  if (icon === 'thunder') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+        <path d="M7 14h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3-1.7A3.5 3.5 0 0 0 7 14z" />
+        <path d="M12 14l-2 4h2l-1 4 3-5h-2l2-3" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="weather-icon">
+      <path d="M7 16h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3-1.7A3.5 3.5 0 0 0 7 16z" />
+    </svg>
+  )
+}
 
 function getLondonPartsFromDate(date: Date): { year: number; month: number; day: number; hour: number } {
   const parts = LONDON_PARTS_FORMATTER.formatToParts(date)
@@ -96,6 +236,9 @@ function getLondonDateParts(isoTime: string): { year: number; month: number; day
 }
 
 function buildWeatherPoint(point: MetOfficeSeriesPoint): WeatherPoint {
+  const weatherCode = getWeatherCode(point)
+  const weatherInfo = getWeatherInfo(weatherCode)
+
   return {
     time: point.time as string,
     temperatureC:
@@ -105,8 +248,10 @@ function buildWeatherPoint(point: MetOfficeSeriesPoint): WeatherPoint {
       point.minScreenAirTemp ??
       null,
     precipitationChance: point.probabilityOfPrecipitation ?? point.probOfPrecipitation ?? null,
-    windMph: point.windSpeed10m ?? null,
-    weatherType: point.weatherType ?? null,
+    // Met Office windSpeed10m is metres/sec; convert to mph for display.
+    windMph: Number.isFinite(point.windSpeed10m) ? (point.windSpeed10m as number) * 2.236936 : null,
+    weatherCode,
+    weatherLabel: weatherInfo.label,
   }
 }
 
@@ -400,15 +545,31 @@ function MeetupsPage() {
         {!isLoadingWeather && weatherError && <p>{weatherError}</p>}
 
         {!isLoadingWeather && !weatherError && weatherPoints.length > 0 && (
-          <ul className="bullet-list" aria-label="Next Sunday weather">
-            {weatherPoints.map((point) => (
-              <li key={point.time}>
-                {formatForecastTime(point.time)} - {point.temperatureC ?? 'N/A'}C, rain{' '}
-                {point.precipitationChance ?? 'N/A'}%, wind {point.windMph ?? 'N/A'} mph
-                {point.weatherType ? ` (${point.weatherType})` : ''}
-              </li>
-            ))}
-          </ul>
+          <div className="forecast-grid" aria-label="Nearest Sunday weather">
+            <div className="forecast-row forecast-row-header" role="presentation">
+              <span>Time</span>
+              <span>Condition</span>
+              <span>Temp</span>
+              <span>Rain</span>
+              <span>Wind</span>
+            </div>
+            {weatherPoints.map((point) => {
+              const weatherInfo = getWeatherInfo(point.weatherCode)
+
+              return (
+                <div className="forecast-row" key={point.time}>
+                  <span className="forecast-time">{formatForecastTime(point.time)}</span>
+                  <span className="forecast-condition">
+                    <WeatherIcon icon={weatherInfo.icon} />
+                    <span>{point.weatherLabel}</span>
+                  </span>
+                  <span>{point.temperatureC !== null ? `${Math.round(point.temperatureC)}C` : 'N/A'}</span>
+                  <span>{point.precipitationChance !== null ? `${Math.round(point.precipitationChance)}%` : 'N/A'}</span>
+                  <span>{point.windMph !== null ? `${Math.round(point.windMph)} mph` : 'N/A'}</span>
+                </div>
+              )
+            })}
+          </div>
         )}
       </article>
     </section>
