@@ -4,6 +4,7 @@ export const navItems = [
   { label: 'Events', to: '/events' },
   { label: 'Gallery', to: '/gallery' },
   { label: 'Builds', to: '/builds' },
+  { label: 'Articles', to: '/articles' },
   { label: 'Network', to: '/network' },
   { label: 'Contact', to: '/contact' },
   { label: 'About', to: '/about' },

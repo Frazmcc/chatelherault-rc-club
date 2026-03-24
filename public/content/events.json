@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "title": "Upcoming features",
+      "description": "Upcoming collaboration runs and themed event days will appear here."
+    },
+    {
+      "title": "Recent recaps",
+      "description": "Event recap posts with photo highlights and route notes will be published in this block."
+    },
+    {
+      "title": "Community updates",
+      "description": "Announcements about charity runs and club milestones are ready for rollout."
+    }
+  ]
+}

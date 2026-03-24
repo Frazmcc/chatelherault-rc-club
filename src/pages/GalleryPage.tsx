@@ -1,7 +1,12 @@
 import PageIntro from '../components/PageIntro'
-import ShellPlaceholder from '../components/ShellPlaceholder'
+import { defaultGallery, type EntryCard, useManagedJson } from '../content/managedContent'
 
 function GalleryPage() {
+  const galleryPayload = useManagedJson<{ gallery: EntryCard[] }>('/content/gallery.json', {
+    gallery: defaultGallery,
+  })
+  const galleryEntries = galleryPayload.gallery
+
   return (
     <section className="page-block">
       <PageIntro
@@ -11,18 +16,20 @@ function GalleryPage() {
       />
 
       <div className="card-grid card-grid-three">
-        <ShellPlaceholder
-          title="Weekly crawl albums"
-          description="Regular Sunday photos will be grouped and published as weekly sets."
-        />
-        <ShellPlaceholder
-          title="Event media"
-          description="Special event coverage and short action clips will live in this stream."
-        />
-        <ShellPlaceholder
-          title="Build feature media"
-          description="Close-up shots of rigs and modification details will support member build stories."
-        />
+        {galleryEntries.map((entry) => (
+          <article className="info-card" key={entry.title}>
+            <h3>{entry.title}</h3>
+            <p>{entry.description}</p>
+            {entry.image && (
+              <img
+                className="hero-image"
+                src={entry.image}
+                alt={entry.imageAlt || `${entry.title} image`}
+                loading="lazy"
+              />
+            )}
+          </article>
+        ))}
       </div>
     </section>
   )

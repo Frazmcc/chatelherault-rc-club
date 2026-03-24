@@ -1,7 +1,12 @@
 import PageIntro from '../components/PageIntro'
-import ShellPlaceholder from '../components/ShellPlaceholder'
+import { defaultBuilds, type EntryCard, useManagedJson } from '../content/managedContent'
 
 function BuildsPage() {
+  const buildsPayload = useManagedJson<{ builds: EntryCard[] }>('/content/builds.json', {
+    builds: defaultBuilds,
+  })
+  const builds = buildsPayload.builds
+
   return (
     <section className="page-block">
       <PageIntro
@@ -11,18 +16,12 @@ function BuildsPage() {
       />
 
       <div className="card-grid card-grid-three">
-        <ShellPlaceholder
-          title="Featured rigs"
-          description="Standout member crawlers will be highlighted with full spec summaries."
-        />
-        <ShellPlaceholder
-          title="Mod breakdowns"
-          description="Suspension, drivetrain, and bodywork upgrades will be documented as easy read cards."
-        />
-        <ShellPlaceholder
-          title="Build stories"
-          description="Member write-ups will explain setup goals, trail performance, and lessons learned."
-        />
+        {builds.map((entry) => (
+          <article className="info-card" key={entry.title}>
+            <h3>{entry.title}</h3>
+            <p>{entry.description}</p>
+          </article>
+        ))}
       </div>
     </section>
   )

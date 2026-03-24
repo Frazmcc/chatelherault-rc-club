@@ -1,0 +1,155 @@
+backend:
+  name: github
+  repo: Frazmcc/chatelherault-rc-club
+  branch: main
+
+media_folder: public/uploads
+public_folder: /uploads
+
+publish_mode: editorial_workflow
+
+collections:
+  - name: settings
+    label: Site Settings
+    files:
+      - name: site
+        label: Site Navigation and Footer
+        file: public/content/settings/site.json
+        fields:
+          - { name: footerTitle, label: Footer Title, widget: string }
+          - { name: footerText, label: Footer Text, widget: text }
+          - label: Navigation Items
+            name: navItems
+            widget: list
+            fields:
+              - { name: label, label: Label, widget: string }
+              - { name: to, label: Route, widget: string }
+          - label: Social Links
+            name: socialLinks
+            widget: list
+            fields:
+              - { name: label, label: Label, widget: string }
+              - { name: href, label: URL, widget: string }
+
+      - name: home
+        label: Home Page
+        file: public/content/pages/home.json
+        fields:
+          - { name: eyebrow, label: Eyebrow, widget: string }
+          - { name: title, label: Title, widget: string }
+          - { name: description, label: Description, widget: text }
+          - { name: shellLabel, label: Panel Label, widget: string }
+          - { name: panelTitle, label: Panel Title, widget: string }
+          - { name: panelBody, label: Panel Body, widget: text }
+          - { name: heroImageSrc, label: Hero Image Path, widget: string }
+          - { name: heroImageAlt, label: Hero Image Alt Text, widget: string }
+          - label: Highlights
+            name: highlights
+            widget: list
+            fields:
+              - { name: value, label: Value, widget: string }
+              - { name: label, label: Label, widget: string }
+          - label: Feature Cards
+            name: featureCards
+            widget: list
+            fields:
+              - { name: title, label: Title, widget: string }
+              - { name: description, label: Description, widget: text }
+
+      - name: about
+        label: About Page
+        file: public/content/pages/about.json
+        fields:
+          - { name: eyebrow, label: Eyebrow, widget: string }
+          - { name: title, label: Title, widget: string }
+          - { name: description, label: Description, widget: text }
+          - { name: valuesTitle, label: Values Block Title, widget: string }
+          - label: Values List
+            name: valuesList
+            widget: list
+            field: { name: item, label: Item, widget: string }
+          - { name: newcomerTitle, label: Newcomer Block Title, widget: string }
+          - { name: newcomerBody, label: Newcomer Body, widget: text }
+
+      - name: meetups
+        label: Meetups Page
+        file: public/content/pages/meetups.json
+        fields:
+          - { name: eyebrow, label: Eyebrow, widget: string }
+          - { name: title, label: Title, widget: string }
+          - { name: description, label: Description, widget: text }
+          - { name: scheduleTitle, label: Schedule Title, widget: string }
+          - { name: arrivalWindow, label: Arrival Window, widget: string }
+          - { name: rolloutTarget, label: Rollout Target, widget: string }
+          - { name: meetPointLabel, label: Meet Point Label, widget: string }
+          - { name: meetPointCoordinates, label: Meet Point Coordinates, widget: string }
+          - { name: what3words, label: what3words Address, widget: string }
+          - { name: what3wordsUrl, label: what3words URL, widget: string }
+          - { name: weatherLocationLabel, label: Weather Location Label, widget: string }
+          - { name: checklistTitle, label: Checklist Title, widget: string }
+          - label: Checklist Items
+            name: checklistItems
+            widget: list
+            field: { name: item, label: Item, widget: string }
+
+  - name: articles
+    label: Articles
+    files:
+      - name: articles
+        label: Articles
+        file: public/content/articles.json
+        fields:
+          - label: Articles
+            name: articles
+            widget: list
+            fields:
+              - { name: title, label: Title, widget: string }
+              - { name: slug, label: Slug, widget: string }
+              - { name: excerpt, label: Excerpt, widget: text }
+              - { name: date, label: Date, widget: datetime, date_format: YYYY-MM-DD, time_format: false }
+
+  - name: events
+    label: Events
+    files:
+      - name: events
+        label: Events
+        file: public/content/events.json
+        fields:
+          - label: Event Entries
+            name: events
+            widget: list
+            fields:
+              - { name: title, label: Title, widget: string }
+              - { name: description, label: Description, widget: text }
+              - { name: date, label: Date, required: false, widget: string }
+              - { name: location, label: Location, required: false, widget: string }
+
+  - name: gallery
+    label: Gallery
+    files:
+      - name: gallery
+        label: Gallery
+        file: public/content/gallery.json
+        fields:
+          - label: Gallery Entries
+            name: gallery
+            widget: list
+            fields:
+              - { name: title, label: Title, widget: string }
+              - { name: description, label: Description, widget: text }
+              - { name: image, label: Image, required: false, widget: image }
+              - { name: imageAlt, label: Image Alt Text, required: false, widget: string }
+
+  - name: builds
+    label: Builds
+    files:
+      - name: builds
+        label: Builds
+        file: public/content/builds.json
+        fields:
+          - label: Build Entries
+            name: builds
+            widget: list
+            fields:
+              - { name: title, label: Title, widget: string }
+              - { name: description, label: Description, widget: text }

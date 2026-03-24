@@ -1,7 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { navItems, socialLinks } from '../content/siteContent'
+import { defaultSiteSettings, type SiteSettings, useManagedJson } from '../content/managedContent'
 
 function SiteLayout() {
+  const siteSettings = useManagedJson<SiteSettings>('/content/settings/site.json', defaultSiteSettings)
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -14,7 +16,7 @@ function SiteLayout() {
         </NavLink>
 
         <nav className="site-nav" aria-label="Primary">
-          {navItems.map((item) => (
+          {siteSettings.navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -32,11 +34,11 @@ function SiteLayout() {
 
       <footer className="site-footer">
         <div>
-          <p className="footer-title">Chatelherault RC Club</p>
-          <p className="footer-text">Built for meetups, media, builds, and club networking.</p>
+          <p className="footer-title">{siteSettings.footerTitle}</p>
+          <p className="footer-text">{siteSettings.footerText}</p>
         </div>
         <div className="footer-links" aria-label="Social links">
-          {socialLinks.map((social) => (
+          {siteSettings.socialLinks.map((social) => (
             <a key={social.label} href={social.href} target="_blank" rel="noreferrer">
               {social.label}
             </a>

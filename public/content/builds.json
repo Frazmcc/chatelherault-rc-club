@@ -1,0 +1,16 @@
+{
+  "builds": [
+    {
+      "title": "Featured rigs",
+      "description": "Standout member crawlers will be highlighted with full spec summaries."
+    },
+    {
+      "title": "Mod breakdowns",
+      "description": "Suspension, drivetrain, and bodywork upgrades will be documented as easy read cards."
+    },
+    {
+      "title": "Build stories",
+      "description": "Member write-ups will explain setup goals, trail performance, and lessons learned."
+    }
+  ]
+}

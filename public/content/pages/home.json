@@ -1,0 +1,29 @@
+{
+  "eyebrow": "Sunday mornings in South Lanarkshire",
+  "title": "A standout home for Chatelherault RC Club",
+  "description": "This shell launch gives the club a polished foundation for meetup updates, event recaps, galleries, member builds, and partner networking.",
+  "shellLabel": "Shell launch status",
+  "panelTitle": "Live-ready structure, content phase next",
+  "panelBody": "This is the production shell launch. Weekly posts, full galleries, and member build archives will be added during the content phase.",
+  "heroImageSrc": "/brand/chattersrc-alt.jpg",
+  "heroImageAlt": "Chatelherault RC Club featured branding",
+  "highlights": [
+    { "value": "Sunday", "label": "morning meetups" },
+    { "value": "1/10", "label": "crawler focus" },
+    { "value": "Chatelherault", "label": "country park terrain" }
+  ],
+  "featureCards": [
+    {
+      "title": "Weekly Meetups",
+      "description": "Sunday details, weather status, and turnout notes will be updated by admins each week."
+    },
+    {
+      "title": "Event Features",
+      "description": "Special crawls, collaborations, and standout recaps are structured and ready to publish."
+    },
+    {
+      "title": "Member Builds",
+      "description": "Build stories, rig specs, and upgrade highlights will be added to a dedicated showcase."
+    }
+  ]
+}

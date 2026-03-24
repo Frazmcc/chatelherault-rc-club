@@ -1,0 +1,16 @@
+{
+  "gallery": [
+    {
+      "title": "Weekly crawl albums",
+      "description": "Regular Sunday photos will be grouped and published as weekly sets."
+    },
+    {
+      "title": "Event media",
+      "description": "Special event coverage and short action clips will live in this stream."
+    },
+    {
+      "title": "Build feature media",
+      "description": "Close-up shots of rigs and modification details will support member build stories."
+    }
+  ]
+}

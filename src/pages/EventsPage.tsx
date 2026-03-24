@@ -1,7 +1,12 @@
 import PageIntro from '../components/PageIntro'
-import ShellPlaceholder from '../components/ShellPlaceholder'
+import { defaultEvents, type EventEntry, useManagedJson } from '../content/managedContent'
 
 function EventsPage() {
+  const eventsPayload = useManagedJson<{ events: EventEntry[] }>('/content/events.json', {
+    events: defaultEvents,
+  })
+  const events = eventsPayload.events
+
   return (
     <section className="page-block">
       <PageIntro
@@ -11,18 +16,15 @@ function EventsPage() {
       />
 
       <div className="card-grid card-grid-three">
-        <ShellPlaceholder
-          title="Upcoming features"
-          description="Upcoming collaboration runs and themed event days will appear here."
-        />
-        <ShellPlaceholder
-          title="Recent recaps"
-          description="Event recap posts with photo highlights and route notes will be published in this block."
-        />
-        <ShellPlaceholder
-          title="Community updates"
-          description="Announcements about charity runs and club milestones are ready for rollout."
-        />
+        {events.map((entry) => (
+          <article className="info-card" key={`${entry.title}-${entry.date ?? ''}`}>
+            {(entry.date || entry.location) && (
+              <p className="panel-label">{[entry.date, entry.location].filter(Boolean).join(' - ')}</p>
+            )}
+            <h3>{entry.title}</h3>
+            <p>{entry.description}</p>
+          </article>
+        ))}
       </div>
     </section>
   )

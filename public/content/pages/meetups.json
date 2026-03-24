@@ -1,0 +1,20 @@
+{
+  "eyebrow": "Sunday meetup hub",
+  "title": "Meet every Sunday morning at Chatelherault",
+  "description": "This page is designed for quick clarity: where to meet, when to arrive, and what to bring.",
+  "scheduleTitle": "Sunday meetup schedule",
+  "arrivalWindow": "9:00am",
+  "rolloutTarget": "10:10am",
+  "meetPointLabel": "Meet Point",
+  "meetPointCoordinates": "55.76278, -4.010164",
+  "what3words": "///lively.woes.tinsel",
+  "what3wordsUrl": "https://w3w.co/lively.woes.tinsel",
+  "weatherLocationLabel": "Chatelherault (Ferniegair)",
+  "checklistTitle": "Sunday prep checklist",
+  "checklistItems": [
+    "Fully charged packs and backup battery",
+    "Basic tools and wheel nut wrench",
+    "Waterproof gear for changing conditions",
+    "Trail-ready 1/10 crawler setup"
+  ]
+}
