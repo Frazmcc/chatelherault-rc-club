@@ -17,13 +17,17 @@ type MetOfficeSeriesPoint = {
   minScreenAirTemp?: number
   feelsLikeTemperature?: number
   probabilityOfPrecipitation?: number
+  probOfPrecipitation?: number
   windSpeed10m?: number
   weatherType?: string
 }
 
 const MEETUP_LAT = 55.76278
 const MEETUP_LON = -4.010164
-const METOFFICE_PROXY_URL = import.meta.env.VITE_METOFFICE_PROXY_URL || '/api/metoffice-forecast'
+const DEFAULT_PROXY_URL = '/api/metoffice-forecast'
+const WORKER_FALLBACK_PROXY_URL =
+  'https://chatelherault-rc-club.fraz-er.workers.dev/api/metoffice-forecast'
+const METOFFICE_PROXY_URL = import.meta.env.VITE_METOFFICE_PROXY_URL || DEFAULT_PROXY_URL
 const METOFFICE_HOURLY_URL =
   import.meta.env.VITE_METOFFICE_HOURLY_URL ||
   'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly'
@@ -54,6 +58,37 @@ function inNextSundayWindow(isoTime: string, nextSunday: Date): boolean {
     local.getHours() >= 9 &&
     local.getHours() <= 13
   )
+}
+
+function getLondonDateParts(isoTime: string): { year: number; month: number; day: number; hour: number } | null {
+  const parsed = new Date(isoTime)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  const local = new Date(parsed.toLocaleString('en-GB', { timeZone: 'Europe/London' }))
+  return {
+    year: local.getFullYear(),
+    month: local.getMonth() + 1,
+    day: local.getDate(),
+    hour: local.getHours(),
+  }
+}
+
+function buildWeatherPoint(point: MetOfficeSeriesPoint): WeatherPoint {
+  return {
+    time: point.time as string,
+    temperatureC:
+      point.screenTemperature ??
+      point.feelsLikeTemperature ??
+      point.maxScreenAirTemp ??
+      point.minScreenAirTemp ??
+      null,
+    precipitationChance: point.probabilityOfPrecipitation ?? point.probOfPrecipitation ?? null,
+    windMph: point.windSpeed10m ?? null,
+    weatherType: point.weatherType ?? null,
+  }
 }
 
 function formatForecastTime(isoTime: string): string {
@@ -107,6 +142,7 @@ function MeetupsPage() {
   const meetups = useManagedJson<MeetupsContent>('/content/pages/meetups.json', defaultMeetupsContent)
   const [weatherPoints, setWeatherPoints] = useState<WeatherPoint[]>([])
   const [weatherError, setWeatherError] = useState<string | null>(null)
+  const [weatherNote, setWeatherNote] = useState<string | null>(null)
   const [isLoadingWeather, setIsLoadingWeather] = useState(false)
   const nextSunday = useMemo(() => getNextSundayDate(new Date()), [])
 
@@ -122,6 +158,7 @@ function MeetupsPage() {
     const loadWeather = async () => {
       setIsLoadingWeather(true)
       setWeatherError(null)
+      setWeatherNote(null)
 
       try {
         const proxiedUrl = `${METOFFICE_PROXY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}`
@@ -132,6 +169,23 @@ function MeetupsPage() {
           },
         })
         let responseSource: 'proxy' | 'direct' = 'proxy'
+
+        // If current host does not expose /api, retry against the known Worker API endpoint.
+        if (
+          !response.ok &&
+          response.status === 404 &&
+          METOFFICE_PROXY_URL === DEFAULT_PROXY_URL &&
+          window.location.hostname !== 'chatelherault-rc-club.fraz-er.workers.dev'
+        ) {
+          response = await fetch(
+            `${WORKER_FALLBACK_PROXY_URL}?latitude=${MEETUP_LAT}&longitude=${MEETUP_LON}`,
+            {
+              headers: {
+                accept: 'application/json',
+              },
+            },
+          )
+        }
 
         // Local development fallback: direct browser call if proxy endpoint is unavailable.
         if (!response.ok && browserApiKey && isLocalDev) {
@@ -176,28 +230,63 @@ function MeetupsPage() {
 
         const filtered = series
           .filter((point) => Boolean(point.time) && inNextSundayWindow(point.time as string, nextSunday))
-          .map((point) => ({
-            time: point.time as string,
-            temperatureC:
-              point.screenTemperature ??
-              point.feelsLikeTemperature ??
-              point.maxScreenAirTemp ??
-              point.minScreenAirTemp ??
-              null,
-            precipitationChance: point.probabilityOfPrecipitation ?? null,
-            windMph: point.windSpeed10m ?? null,
-            weatherType: point.weatherType ?? null,
-          }))
+          .map((point) => buildWeatherPoint(point))
 
         if (!active) {
           return
         }
 
-        if (filtered.length === 0) {
-          setWeatherError('No Met Office hourly points were returned yet for next Sunday 09:00-13:00.')
+        if (filtered.length > 0) {
+          setWeatherPoints(filtered)
+          return
         }
 
-        setWeatherPoints(filtered)
+        const firstAvailableDateKey =
+          series
+            .filter((point) => Boolean(point.time))
+            .map((point) => getLondonDateParts(point.time as string))
+            .find((parts) => Boolean(parts) && (parts as { hour: number }).hour >= 9 && (parts as { hour: number }).hour <= 13)
+
+        if (!firstAvailableDateKey) {
+          setWeatherError('No Met Office hourly points are currently available for 09:00-13:00.')
+          setWeatherPoints([])
+          return
+        }
+
+        const fallbackFiltered = series
+          .filter((point) => {
+            if (!point.time) {
+              return false
+            }
+
+            const parts = getLondonDateParts(point.time)
+            if (!parts) {
+              return false
+            }
+
+            return (
+              parts.year === firstAvailableDateKey.year &&
+              parts.month === firstAvailableDateKey.month &&
+              parts.day === firstAvailableDateKey.day &&
+              parts.hour >= 9 &&
+              parts.hour <= 13
+            )
+          })
+          .map((point) => buildWeatherPoint(point))
+
+        if (fallbackFiltered.length === 0) {
+          setWeatherError('No Met Office hourly points are currently available for 09:00-13:00.')
+          setWeatherPoints([])
+          return
+        }
+
+        const fallbackDate = new Date(
+          `${String(firstAvailableDateKey.year)}-${String(firstAvailableDateKey.month).padStart(2, '0')}-${String(firstAvailableDateKey.day).padStart(2, '0')}T12:00:00`,
+        )
+        setWeatherNote(
+          `Next Sunday forecast is not published yet. Showing nearest available window for ${formatForecastDate(fallbackDate)}.`,
+        )
+        setWeatherPoints(fallbackFiltered)
       } catch (error) {
         if (!active) {
           return
@@ -285,6 +374,7 @@ function MeetupsPage() {
           Met Office forecast for {meetups.weatherLocationLabel} on {formatForecastDate(nextSunday)}
         </h2>
         <p>Hourly window: 09:00 to 13:00 (Europe/London)</p>
+        {!isLoadingWeather && weatherNote && <p>{weatherNote}</p>}
 
         {isLoadingWeather && <p>Loading latest forecast...</p>}
 
