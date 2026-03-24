@@ -5,6 +5,33 @@ const DEFAULT_SAFETY_BUFFER_BYTES = 10 * 1024 * 1024
 const DEFAULT_CACHE_TTL_SECONDS = 3 * 60 * 60
 const DEFAULT_DAILY_CALL_LIMIT = 350
 
+function buildCorsHeaders(request) {
+  const origin = request.headers.get('origin') || '*'
+  const allowOrigin = origin === 'null' ? '*' : origin
+
+  return {
+    'access-control-allow-origin': allowOrigin,
+    'access-control-allow-methods': 'GET, OPTIONS',
+    'access-control-allow-headers': 'Content-Type, Accept',
+    vary: 'Origin',
+  }
+}
+
+function withCors(response, request) {
+  const headers = new Headers(response.headers)
+  const cors = buildCorsHeaders(request)
+
+  Object.entries(cors).forEach(([key, value]) => {
+    headers.set(key, value)
+  })
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
 function parseCoordinate(value, fallback) {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -160,8 +187,26 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
-    if (url.pathname === '/api/metoffice-forecast' && request.method === 'GET') {
-      return handleForecast(request, env, ctx)
+    if (url.pathname === '/api/metoffice-forecast') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: buildCorsHeaders(request),
+        })
+      }
+
+      if (request.method !== 'GET') {
+        return withCors(
+          new Response(JSON.stringify({ error: 'Method not allowed.' }), {
+            status: 405,
+            headers: { 'content-type': 'application/json' },
+          }),
+          request,
+        )
+      }
+
+      const forecastResponse = await handleForecast(request, env, ctx)
+      return withCors(forecastResponse, request)
     }
 
     // Everything else is served as static assets
