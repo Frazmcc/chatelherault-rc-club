@@ -7,6 +7,11 @@ const DEFAULT_SAFETY_BUFFER_BYTES = 10 * 1024 * 1024
 const DEFAULT_CACHE_TTL_SECONDS = 3 * 60 * 60
 const DEFAULT_DAILY_CALL_LIMIT = 350
 
+// Per-isolate safety backstop; a globally atomic quota still requires a
+// Cloudflare Durable Object or an equivalent transactional store.
+let concurrentMetOfficeRequests = 0
+const MAX_CONCURRENT_METOFFICE_REQUESTS = 2
+
 function buildCorsHeaders(request) {
   const origin = request.headers.get('origin') || '*'
   const allowOrigin = origin === 'null' ? '*' : origin
@@ -156,9 +161,24 @@ async function handleForecast(request, env, ctx) {
       : env.METOFFICE_HOURLY_URL || DEFAULT_METOFFICE_HOURLY_URL
   const upstreamUrl = `${upstreamBase}?latitude=${latitude}&longitude=${longitude}`
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    headers: { apikey: apiKey, 'x-api-key': apiKey, accept: 'application/json' },
-  })
+  // Bounded fanout prevents local storms of paid upstream requests even when
+  // cache keys differ. Fail closed rather than sending unlimited parallel calls.
+  if (concurrentMetOfficeRequests >= MAX_CONCURRENT_METOFFICE_REQUESTS) {
+    return new Response(JSON.stringify({ error: 'Weather provider is busy. Retry shortly.' }), {
+      status: 429,
+      headers: { 'content-type': 'application/json', 'retry-after': '10' },
+    })
+  }
+  let upstreamResponse
+  concurrentMetOfficeRequests += 1
+  try {
+    upstreamResponse = await fetch(upstreamUrl, {
+      headers: { apikey: apiKey, 'x-api-key': apiKey, accept: 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    })
+  } finally {
+    concurrentMetOfficeRequests -= 1
+  }
 
   if (!upstreamResponse.ok) {
     const details = await upstreamResponse.text()
