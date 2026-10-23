@@ -5,6 +5,10 @@ const DEFAULT_SAFETY_BUFFER_BYTES = 10 * 1024 * 1024
 const DEFAULT_CACHE_TTL_SECONDS = 3 * 60 * 60
 const DEFAULT_DAILY_CALL_LIMIT = 350
 
+// Local backstop while a Durable Object-backed quota is not configured.
+let concurrentUpstreamCalls = 0
+const MAX_CONCURRENT_UPSTREAM_CALLS = 2
+
 function parseCoordinate(value, fallback) {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -149,13 +153,27 @@ export async function onRequestGet(context) {
 
   await setCurrentCalls(usageKv, dayKey, currentCalls + 1)
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    headers: {
-      apikey: apiKey,
-      'x-api-key': apiKey,
-      accept: 'application/json',
-    },
-  })
+  if (concurrentUpstreamCalls >= MAX_CONCURRENT_UPSTREAM_CALLS) {
+    return new Response(JSON.stringify({ error: 'Weather source is busy; retry shortly.' }), {
+      status: 429,
+      headers: { 'content-type': 'application/json', 'retry-after': '10' },
+    })
+  }
+
+  let upstreamResponse
+  concurrentUpstreamCalls += 1
+  try {
+    upstreamResponse = await fetch(upstreamUrl, {
+      headers: {
+        apikey: apiKey,
+        'x-api-key': apiKey,
+        accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(15000),
+    })
+  } finally {
+    concurrentUpstreamCalls -= 1
+  }
 
   if (!upstreamResponse.ok) {
     const details = await upstreamResponse.text()
