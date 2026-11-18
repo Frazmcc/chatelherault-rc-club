@@ -29,6 +29,10 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.7",
-    "wrangler": "^4.77.0"
+    "wrangler": "^4.164.0"
+  },
+  "overrides": {
+    "undici": "^7.30.1",
+    "minimatch": "^11.0.1"
   }
 }
